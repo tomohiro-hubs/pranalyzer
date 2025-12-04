@@ -1,52 +1,40 @@
-# PR Analyzer
+# Solar Circuit Designer (太陽光発電所 回路設計支援ツール)
 
-太陽光発電所のPR（Performance Ratio）を可視化するクライアントサイド静的Webアプリケーションです。
-日次発電量CSVをアップロードするだけで、発電所全体およびPCSごとのPRを計算・可視化します。
+**現在のデプロイ状況**: 
+メインアプリケーションは `index.html` (旧 `preview.html`) に集約されています。このファイルは単独で動作するHTMLファイルであり（React, TailwindをCDN経由で読み込み）、GitHub Pages等の静的ホスティングサービスにそのまま配置して動作可能です。
 
-## 機能
+## 機能概要
 
-*   **CSVインポート**: クライアントサイドでCSVを解析（サーバーへのデータ送信なし）
-*   **自動計算**:
-    *   発電所全体のPR（Performance Ratio）
-    *   PCSごとのPR
-*   **可視化**:
-    *   **サマリー**: 期間、平均PR、最大/最小PR日
-    *   **日次PR一覧**: テーブル形式での詳細表示（ソート可能）
-    *   **PCS別ヒートマップ**: 日付 x PCS ID のマトリクスでPR分布を色分け表示
-*   **エクスポート**: 計算結果（PR値）を付与したCSVデータのダウンロード
-*   **完全静的動作**: GitHub Pagesなどで動作可能
+- **パネル仕様入力**: Voc, Vmp, 温度係数などの仕様入力（プリセット56種対応）
+- **PCS仕様入力**: 複数台のPCS構成に対応、MPPT範囲や最大入力電圧などの設定
+- **自動計算**:
+  - 最低気温時のVoc上昇（温度補正）
+  - MPPT動作範囲と最大電圧制約に基づいた直列枚数（ストリング）の決定
+  - 過積載率の計算
+  - 電流値の整合性チェック（Isc, Imp）
+- **結果表示**:
+  - 回路割付表（マトリクス表示）
+  - 設計サマリー（PV容量、PCS容量、過積載率）
+  - 警告メッセージ（制約違反時）
+  - 詳細な電流・電圧判定（NG理由の明示）
 
-## 技術スタック
+## ファイル構成
 
-*   **Framework**: React + Vite + TypeScript
-*   **Styling**: Tailwind CSS
-*   **Routing**: React Router (HashRouter)
-*   **Icons**: Lucide React
-*   **CSV Parser**: PapaParse
+- `index.html`: メインアプリケーション（旧 preview.html）。これを開くだけでアプリが利用可能です。
+- `index.old.html`: 以前のViteエントリーポイント（バックアップ）。
 
-## プロジェクト構成
+## 開発環境セットアップ (参考: 元のViteプロジェクト)
 
-```
-src/
-├── components/     # UIコンポーネント (Header, Tabs, Visualization Widgets)
-├── pages/          # ページコンポーネント (About)
-├── utils/          # ロジック (CSV Parser, PR計算)
-├── types.ts        # TypeScript型定義
-├── App.tsx         # メインアプリケーションロジック
-└── main.tsx        # エントリーポイント
-public/
-└── data.json       # 発電所・PCSメタデータ設定ファイル
-```
+以下は元のVite構成を利用する場合の手順ですが、現在は `index.html` を直接編集・利用する形態がメインとなっています。
 
-## 開発・実行方法
 
-### 1. インストール
+### 1. 依存パッケージのインストール
 
 ```bash
 npm install
 ```
 
-### 2. ローカルサーバー起動
+### 2. 開発サーバーの起動
 
 ```bash
 npm run dev
@@ -58,34 +46,15 @@ npm run dev
 npm run build
 ```
 
-## 設定 (public/data.json)
+## プロジェクト構成
 
-発電所やPCSの定格容量（DC）は `public/data.json` で定義されています。
-運用環境に合わせてこのファイルを修正してください。
+- `src/types.ts`: TypeScript型定義 (PanelSpec, PcsSpecなど)
+- `src/logic/stringDesign.ts`: 設計計算のコアロジック (純粋関数)
+- `src/components/`: UIコンポーネント群
+- `src/App.tsx`: メイン画面構成と状態管理
 
-```json
-{
-  "plant": {
-    "id": "plant-1",
-    "name": "My Solar Plant",
-    "defaultPdcKw": 1000.0
-  },
-  "pcsList": [
-    { "id": "1-1-1", "name": "PCS 1", "ratedDcKw": 50.0 },
-    ...
-  ]
-}
-```
+## 制限事項・前提
 
-## CSVフォーマット仕様
-
-以下のヘッダを持つCSVファイルが必要です。
-
-*   `date`: YYYY-MM-DD
-*   `irradiation_h`: 日射量 (kWh/m² etc)
-*   `plant_pdc_kw`: 発電所DC定格 (kW) ※1行目の値が使用されます
-*   `pcs_{ID}_kwh`: 各PCSの発電量 (kWh)
-
-## ライセンス
-
-MIT
+- 並列ストリング（1回路に複数ストリング接続）は現状非対応です（1回路=1ストリング前提）。
+- 計算ロジックは「最大枚数優先」の簡易ヒューリスティックを採用しています。
+- モジュールの総数が割り切れない場合の高度な配分最適化は実装されていません（端数は警告表示）。
